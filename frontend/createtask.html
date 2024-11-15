@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { width: 80%; margin: auto; padding: 20px; }
+        h2 { text-align: center; }
+        .form-control { width: 100%; padding: 10px; margin: 10px 0; }
+        .btn { padding: 10px 20px; background-color: #28a745; color: white; border: none; cursor: pointer; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-primary { background-color: #007bff; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 10px; text-align: left; }
+        .action-btn { margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Registration Form -->
+        <h2>Register</h2>
+        <form id="register-form">
+            <input type="text" id="username" class="form-control" placeholder="Username" required>
+            <input type="email" id="email" class="form-control" placeholder="Email" required>
+            <input type="password" id="password" class="form-control" placeholder="Password" required>
+            <button type="submit" class="btn">Register</button>
+        </form>
+        <div id="register-message"></div>
+
+        <!-- Login Form -->
+        <h2>Login</h2>
+        <form id="login-form">
+            <input type="text" id="login-username" class="form-control" placeholder="Username" required>
+            <input type="password" id="login-password" class="form-control" placeholder="Password" required>
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        <div id="login-message"></div>
+
+        <!-- Task List -->
+        <div id="task-list-container" style="display:none;">
+            <h2>Your Tasks</h2>
+            <button id="create-task-btn" class="btn">Create Task</button>
+            <button id="logout-btn" class="btn btn-danger" onclick="logout()">Logout</button>
+            <table id="task-list">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="task-list-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = "http://127.0.0.1:8000/api"; // Replace with your backend URL
+
+        // Register User
+document.getElementById('register-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    try {
+        const response = await fetch(`${apiUrl}/register/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, email, password })
+        });
+
+        // Check if the response is valid JSON
+        const data = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('register-message').innerText = "User registered successfully!";
+        } else {
+            document.getElementById('register-message').innerText = data.error || 'Registration failed.';
+        }
+    } catch (error) {
+        document.getElementById('register-message').innerText = 'Something went wrong. Please try again later.';
+        console.error('Error:', error);
+    }
+});
+
+
+        // Login User
+        document.getElementById('login-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            const response = await fetch(`${apiUrl}/login/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                localStorage.setItem('token', data.token); // Save token for session
+                document.getElementById('login-message').innerText = "Login successful!";
+                document.getElementById('login-form').reset();
+                loadTasks();
+                document.getElementById('task-list-container').style.display = 'block';
+            } else {
+                document.getElementById('login-message').innerText = data.error || 'Login failed.';
+            }
+        });
+
+        // Logout User
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.reload();
+        }
+
+        // Fetch and display tasks
+        async function loadTasks() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            const response = await fetch(`${apiUrl}/tasks/`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const tasks = await response.json();
+            const taskListBody = document.getElementById('task-list-body');
+            taskListBody.innerHTML = '';
+
+            tasks.forEach(task => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${task.title}</td>
+                    <td>${task.description}</td>
+                    <td>${task.priority}</td>
+                    <td>${task.status}</td>
+                    <td>
+                        <button class="action-btn btn btn-warning" onclick="editTask(${task.id})">Edit</button>
+                        <button class="action-btn btn btn-danger" onclick="deleteTask(${task.id})">Delete</button>
+                    </td>
+                `;
+                taskListBody.appendChild(row);
+            });
+        }
+
+        // Create Task
+        document.getElementById('create-task-btn').addEventListener('click', async function () {
+            const title = prompt('Enter task title');
+            const description = prompt('Enter task description');
+            const priority = prompt('Enter task priority (Low, Medium, High)');
+            const status = prompt('Enter task status (Yet-to-start, In-progress, Completed, Hold)');
+            const deadline = prompt('Enter task deadline (YYYY-MM-DD)');
+
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${apiUrl}/tasks/create/`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ title, description, priority, status, deadline })
+            });
+
+            if (response.ok) {
+                loadTasks();
+            } else {
+                alert('Error creating task');
+            }
+        });
+
+        // Edit Task
+        async function editTask(taskId) {
+            const taskTitle = prompt('Edit task title');
+            const response = await fetch(`${apiUrl}/tasks/${taskId}/update/`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ title: taskTitle })
+            });
+            if (response.ok) loadTasks();
+        }
+
+        // Delete Task
+        async function deleteTask(taskId) {
+            const confirmDelete = confirm('Are you sure you want to delete this task?');
+            if (confirmDelete) {
+                const response = await fetch(`${apiUrl}/tasks/${taskId}/delete/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    },
+                });
+
+                if (response.ok) {
+                    loadTasks();
+                } else {
+                    alert('Error deleting task');
+                }
+            }
+        }
+
+        // On page load, check if logged in
+        if (localStorage.getItem('token')) {
+            loadTasks();
+            document.getElementById('task-list-container').style.display = 'block';
+        }
+    </script>
+
+</body>
+</html>

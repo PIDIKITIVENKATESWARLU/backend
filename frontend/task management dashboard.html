@@ -1,0 +1,112 @@
+<!-- dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Dashboard</title>
+</head>
+<body>
+    <h2>Task Dashboard</h2>
+    <button id="logout-btn">Logout</button>
+    <h3>Your Tasks</h3>
+    <table id="task-table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Deadline</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Task rows will be populated here -->
+        </tbody>
+    </table>
+    <button id="create-task-btn">Create New Task</button>
+
+    <script>
+        // Fetch tasks and display
+        function fetchTasks() {
+            fetch('/api/tasks/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'), // Add the JWT token if you're using one
+                }
+            })
+            .then(response => response.json())
+            .then(tasks => {
+                const tableBody = document.querySelector('#task-table tbody');
+                tableBody.innerHTML = '';  // Clear the current list of tasks
+                tasks.forEach(task => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${task.title}</td>
+                        <td>${task.description}</td>
+                        <td>${task.priority}</td>
+                        <td>${task.status}</td>
+                        <td>${task.deadline}</td>
+                        <td>
+                            <button onclick="editTask(${task.id})">Edit</button>
+                            <button onclick="deleteTask(${task.id})">Delete</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            })
+            .catch(error => console.error('Error fetching tasks:', error));
+        }
+
+        // Call the function to fetch and display tasks when the page loads
+        window.onload = fetchTasks;
+
+        // Logout functionality
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            fetch('/api/logout/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                localStorage.removeItem('token');
+                window.location.href = '/login.html';
+            })
+            .catch(error => console.error('Error logging out:', error));
+        });
+
+        // Create task functionality (popup or redirect)
+        document.getElementById('create-task-btn').addEventListener('click', function() {
+            window.location.href = '/create-task.html';  // Redirect to a page for creating a new task
+        });
+
+        // Edit task functionality
+        function editTask(taskId) {
+            window.location.href = `/edit-task.html?id=${taskId}`;
+        }
+
+        // Delete task functionality
+        function deleteTask(taskId) {
+            fetch(`/api/tasks/${taskId}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Task deleted successfully');
+                    fetchTasks();  // Refresh task list after deletion
+                } else {
+                    alert('Failed to delete task');
+                }
+            })
+            .catch(error => console.error('Error deleting task:', error));
+        }
+    </script>
+</body>
+</html>
