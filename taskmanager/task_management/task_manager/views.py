@@ -103,3 +103,13 @@ def delete_task(request, task_id):
     task = get_object_or_404(Task, id=task_id)
     task.delete()
     return Response({"message": "Task deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+from django.http import JsonResponse
+
+def create_task(request):
+    try:
+        # Task creation logic
+        return JsonResponse({"success": True}, status=201)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+    
+

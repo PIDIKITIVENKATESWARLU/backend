@@ -129,3 +129,8 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOW_ALL_ORIGINS = True
+# Example for Django using django-cors-headers
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Update with your frontend's URL
+]
+
